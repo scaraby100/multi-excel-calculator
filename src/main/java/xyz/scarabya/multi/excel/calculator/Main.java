@@ -24,6 +24,7 @@ import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.filechooser.FileSystemView;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import xyz.scarabya.multi.excel.calculator.domain.FileNotSelectedException;
 import xyz.scarabya.multi.excel.calculator.engine.Calculator;
 import xyz.scarabya.multi.excel.calculator.log.LightLogger;
 
@@ -35,7 +36,7 @@ public class Main
 {
     private final static Logger LOGGER
             = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
-    
+
     /**
      * @param args the command line arguments
      * @throws java.io.IOException
@@ -43,30 +44,41 @@ public class Main
     public static void main(String[] args) throws IOException
     {
         LightLogger.setup();
-        
-        File configFile = showFileChooser("Seleziona ll file di configurazione "
-                + "da utilizzare", "config");
+        File configFile, excelFolder, outputFile;
+        try
+        {
+            configFile = showFileChooser("Seleziona ll file di configurazione "
+                    + "da utilizzare", "config");
 
-        File excelFolder = showFileChooser("Seleziona la cartella contenente "
-                + "i file Excel da processare", null);
+            excelFolder = showFileChooser("Seleziona la cartella contenente "
+                    + "i file Excel da processare", null);
 
-        File outputFile = showFileChooser("Seleziona ll file Excel in cui "
-                + "salvare i risultati", "xlsx");
+            outputFile = showFileChooser("Seleziona ll file Excel in cui "
+                    + "salvare i risultati", "xlsx");
+        }
+        catch (FileNotSelectedException e)
+        {
+            LOGGER.log(Level.INFO, "User requested cancel of current"
+                    + " operation");
+            throw e;
+        }
 
         Calculator calculator = new Calculator(configFile, excelFolder,
                 outputFile);
-        
+
         try
         {
+            LOGGER.log(Level.INFO, "Reading the mappings file");
             calculator.loadMappings();
         }
         catch (IOException ex)
         {
-            LOGGER.log(Level.SEVERE, "Error reading the configuration file!", ex);
+            LOGGER.log(Level.SEVERE, "Error reading the mappings file!", ex);
         }
 
         try
         {
+            LOGGER.log(Level.INFO, "Reading Excel files");
             calculator.readAndSum();
         }
         catch (IOException | InvalidFormatException ex)
@@ -76,15 +88,18 @@ public class Main
 
         try
         {
+            LOGGER.log(Level.INFO, "Writing results");
             calculator.writeResults();
         }
         catch (IOException | InvalidFormatException ex)
         {
             LOGGER.log(Level.SEVERE, "Error writing results!", ex);
         }
-        
+
+        LOGGER.log(Level.INFO, "All done, bye!");
+
         JOptionPane.showMessageDialog(null, "Elaborazione completata e salvata"
-                + " nel file "+outputFile.getName(), "Completato",
+                + " nel file " + outputFile.getName(), "Completato",
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
@@ -98,7 +113,12 @@ public class Main
             jfc.setFileSelectionMode(JFileChooser.FILES_ONLY);
             jfc.setFileFilter(new FileNameExtensionFilter("File "
                     + extension.toUpperCase(), extension));
-            jfc.showSaveDialog(null);
+            if (extension.equals("config"))
+                jfc.showSaveDialog(null);
+            else
+                jfc.showOpenDialog(null);
+            if (jfc.getSelectedFile() == null)
+                throw new FileNotSelectedException();
             String filename = jfc.getSelectedFile().getAbsolutePath();
             if (!filename.endsWith("." + extension))
                 return new File(filename + "." + extension);
@@ -107,7 +127,10 @@ public class Main
         {
             jfc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             jfc.showOpenDialog(null);
+            if (jfc.getSelectedFile() == null)
+                throw new FileNotSelectedException();
         }
+
         return jfc.getSelectedFile();
     }
 

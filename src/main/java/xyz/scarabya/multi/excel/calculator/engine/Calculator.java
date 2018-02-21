@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import xyz.scarabya.multi.excel.calculator.domain.Result;
 
@@ -32,6 +34,9 @@ import xyz.scarabya.multi.excel.calculator.domain.Result;
  */
 public class Calculator
 {
+    private final static Logger LOGGER
+            = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+    
     private final Map<String, List<String>> mappings;
     private final Map<String, Result> resultsMap;
     private final File configFile, inputFolder, outputFile;
@@ -81,6 +86,7 @@ public class Calculator
         ExcelRW reader = new ExcelRW();
         for (File excelFile : inputFolder.listFiles())
         {
+            LOGGER.log(Level.INFO, "Reading {0}", excelFile.getName());
             reader.loadExcelFile(excelFile);
             for (String mapping : mappings.keySet())
             {
@@ -95,10 +101,14 @@ public class Calculator
     public void writeResults() throws IOException, InvalidFormatException
     {
         ExcelRW writer = new ExcelRW();
+        LOGGER.log(Level.INFO, "Loading output Excel: {0}",
+                outputFile.getName());
         writer.loadExcelFile(outputFile);
+        LOGGER.log(Level.INFO, "Writing new results");
         for (String resultDest : resultsMap.keySet())
             writer.setCellValue(resultDest, resultsMap.get(resultDest)
                     .getResultValue());
+        LOGGER.log(Level.INFO, "Saving file");
         writer.saveExcelFile(outputFile);
     }
 }
