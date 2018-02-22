@@ -38,7 +38,7 @@ public class LightLogger
         if (args.length > 0)
             logLevel = args[0];
         System.setProperty("java.util.logging.SimpleFormatter.format",
-                "%4$s: %5$s%n");
+                "%4$s: %5$s%6$s%n");
         Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
         logger.setLevel(Level.parse(logLevel));
