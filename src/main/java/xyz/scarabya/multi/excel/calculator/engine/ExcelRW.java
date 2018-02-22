@@ -19,15 +19,20 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.ss.util.CellReference;
-import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
@@ -42,6 +47,9 @@ public class ExcelRW
     private final static Pattern PATTERN = Pattern.compile(
             COL_REGEX + ROW_REGEX, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
+    private final static Logger LOGGER
+            = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+    
     private OPCPackage pkg;
     private XSSFWorkbook actualWb;
     private XSSFSheet actualSheet;
@@ -132,7 +140,29 @@ public class ExcelRW
 
     public void evaluateExcelFormulas()
     {
-        XSSFFormulaEvaluator.evaluateAllFormulaCells(actualWb);
+        FormulaEvaluator evaluator = actualWb.getCreationHelper()
+                .createFormulaEvaluator();
+        for (Sheet sheet : actualWb)
+            for (Row r : sheet)
+                for (Cell c : r)
+                    if (c.getCellType() == Cell.CELL_TYPE_FORMULA)
+                        try
+                        {
+                            evaluator.evaluateFormulaCell(c);
+                        }
+                        catch (Exception e)
+                        {
+                            String cellCoord = numCellToString(r.getRowNum(),
+                                    c.getColumnIndex());
+                            String sheetName = sheet.getSheetName();
+                            
+                            String[] logParam = new String[] {cellCoord,
+                                sheetName, e.toString()};
+                            
+                            LOGGER.log(Level.WARNING, "Error evaluating cell"
+                                    + " {0} in sheet {1}: Exception was {2}",
+                                    logParam);
+                        }
     }
 
     public void saveExcelFile(File excelFile) throws FileNotFoundException,
@@ -147,5 +177,11 @@ public class ExcelRW
         closeExcelFile();
         excelFile.delete();
         tempExcelFile.renameTo(excelFile);
+    }
+    
+    private String numCellToString(int rowNum, int columnNum)
+    {
+        return CellReference.convertNumToColString(columnNum)
+                + String.valueOf(rowNum+1);
     }
 }
