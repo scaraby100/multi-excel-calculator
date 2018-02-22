@@ -43,24 +43,37 @@ public class Main
      */
     public static void main(String[] args) throws IOException
     {
-        LightLogger.setup();
+        LightLogger.setup(args);
+
+        LOGGER.log(Level.INFO, "Multi-excel-calculator log file."
+                + " Current log level: {0}", LOGGER.getLevel().toString());
+
         File configFile, excelFolder, outputFile;
-        try
-        {
-            configFile = showFileChooser("Seleziona ll file di configurazione "
-                    + "da utilizzare", "config");
+        if (args.length < 4)
+            try
+            {
+                configFile = showFileChooser("Seleziona ll file di configurazione "
+                        + "da utilizzare", "config");
 
-            excelFolder = showFileChooser("Seleziona la cartella contenente "
-                    + "i file Excel da processare", null);
+                excelFolder = showFileChooser("Seleziona la cartella contenente "
+                        + "i file Excel da processare", null);
 
-            outputFile = showFileChooser("Seleziona ll file Excel in cui "
-                    + "salvare i risultati", "xlsx");
-        }
-        catch (FileNotSelectedException e)
+                outputFile = showFileChooser("Seleziona ll file Excel in cui "
+                        + "salvare i risultati", "xlsx");
+            }
+            catch (FileNotSelectedException e)
+            {
+                LOGGER.log(Level.INFO, "User requested cancel of current"
+                        + " operation");
+                throw e;
+            }
+        else
         {
-            LOGGER.log(Level.INFO, "User requested cancel of current"
-                    + " operation");
-            throw e;
+            configFile = new File(args[1]);
+
+            excelFolder = new File(args[2]);
+
+            outputFile = new File(args[3]);
         }
 
         Calculator calculator = new Calculator(configFile, excelFolder,

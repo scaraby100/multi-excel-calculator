@@ -30,12 +30,19 @@ public class LightLogger
     static private FileHandler fileTxt;
     static private SimpleFormatter formatterTxt;
 
-    static public void setup() throws IOException {
+    private static final String DEF_LEVEL = "INFO";
+
+    static public void setup(String[] args) throws IOException
+    {
+        String logLevel = DEF_LEVEL;
+        if (args.length > 0)
+            logLevel = args[0];
         System.setProperty("java.util.logging.SimpleFormatter.format",
                 "%4$s: %5$s%n");
         Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
-        logger.setLevel(Level.INFO);
+        logger.setLevel(Level.parse(logLevel));
+
         fileTxt = new FileHandler("calc_log.txt");
 
         formatterTxt = new SimpleFormatter();

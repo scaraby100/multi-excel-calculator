@@ -90,12 +90,18 @@ public class Calculator
             reader.loadExcelFile(excelFile);
             for (String mapping : mappings.keySet())
             {
+                LOGGER.log(Level.FINE, "Reading cell at {0}", mapping);
                 double value = reader.getCellValueAt(mapping);
                 for (String outputs : mappings.get(mapping))
+                {
+                    LOGGER.log(Level.FINER, "Sum {0} to {1}",
+                            new String[]{String.valueOf(value), outputs});
                     resultsMap.get(outputs).sum(value);
+                }
 
             }
-        }
+            reader.closeExcelFile();
+        }        
     }
 
     public void writeResults() throws IOException, InvalidFormatException
@@ -109,6 +115,7 @@ public class Calculator
             writer.setCellValue(resultDest, resultsMap.get(resultDest)
                     .getResultValue());
         LOGGER.log(Level.INFO, "Saving file");
+        writer.evaluateExcelFormulas();
         writer.saveExcelFile(outputFile);
     }
 }

@@ -22,12 +22,13 @@ import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
  *
@@ -35,23 +36,41 @@ import org.apache.poi.ss.util.CellReference;
  */
 public class ExcelRW
 {
-    private Workbook actualWb;
-
     private final static String COL_REGEX = "([a-z]+)"; //Column
     private final static String ROW_REGEX = "(\\d+)"; //Row
 
     private final static Pattern PATTERN = Pattern.compile(
             COL_REGEX + ROW_REGEX, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
-    private Sheet actualSheet;
-    private Row actualRow;
+    private OPCPackage pkg;
+    private XSSFWorkbook actualWb;
+    private XSSFSheet actualSheet;
+    private XSSFRow actualRow;
+
+    public ExcelRW()
+    {
+        pkg = null;
+        actualWb = null;
+        actualSheet = null;
+        actualRow = null;
+    }
 
     public void loadExcelFile(File excelFile) throws IOException,
             InvalidFormatException
     {
-        actualWb = WorkbookFactory.create(excelFile);
+        if (actualWb != null || pkg != null)
+            closeExcelFile();
+        pkg = OPCPackage.open(excelFile);
+        actualWb = new XSSFWorkbook(pkg);
         actualSheet = null;
         actualRow = null;
+    }
+
+    public void closeExcelFile() throws IOException
+    {
+        pkg.close();
+        actualWb = null;
+        pkg = null;
     }
 
     public double getCellValueAt(String coordinates)
@@ -95,23 +114,29 @@ public class ExcelRW
         }
     }
 
-    private Row createOrGetRow(Sheet sheet, int rowNum)
+    private XSSFRow createOrGetRow(XSSFSheet sheet, int rowNum)
     {
-        Row row = sheet.getRow(rowNum);
+        XSSFRow row = sheet.getRow(rowNum);
         if (row == null)
             row = sheet.createRow(rowNum);
         return row;
     }
 
-    private void createOrSetCellValue(Row row, int columnNum, double value)
+    private void createOrSetCellValue(XSSFRow row, int columnNum, double value)
     {
-        Cell cell = row.getCell(columnNum);
+        XSSFCell cell = row.getCell(columnNum);
         if (cell == null)
             cell = row.createCell(columnNum);
         cell.setCellValue(value);
     }
 
-    public void saveExcelFile(File excelFile) throws FileNotFoundException, IOException
+    public void evaluateExcelFormulas()
+    {
+        XSSFFormulaEvaluator.evaluateAllFormulaCells(actualWb);
+    }
+
+    public void saveExcelFile(File excelFile) throws FileNotFoundException,
+            IOException
     {
         File tempExcelFile = new File(excelFile.getAbsolutePath() + "_TMP");
         try (FileOutputStream fileOut = new FileOutputStream(
@@ -119,7 +144,7 @@ public class ExcelRW
         {
             actualWb.write(fileOut);
         }
-        actualWb.close();
+        closeExcelFile();
         excelFile.delete();
         tempExcelFile.renameTo(excelFile);
     }
